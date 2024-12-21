@@ -28,6 +28,7 @@ public class MySQLController {
     private ItemsService itemsService;
     private UserService userService;
     private OrderService orderService;
+    private ProfileDetailsService profileDetailsService;
 
 
     public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService, BannerSliderService bannerSliderService, OrderService orderService) {
@@ -36,6 +37,7 @@ public class MySQLController {
         this.categoriesService = categoriesService;
         this.bannerSliderService = bannerSliderService;
         this.orderService = orderService;
+        this.profileDetailsService = new ProfileDetailsService();
     }
 
 
@@ -165,5 +167,11 @@ public class MySQLController {
     @GetMapping("/orders/{customerId}")
     public List<OrderDTO> getOrdersByCustomerId(@PathVariable Long customerId) {
         return orderService.getOrderByCustomerId(customerId);
+    }
+
+    @PostMapping("/updateprofiledetails")
+    public ResponseEntity<String> updateProfileDetails (@RequestBody ProfileDetailsModel profileDetails) {
+        ProfileDetailsModel profileDetailsModel = profileDetailsService.saveProfileDetails(profileDetails);
+        return ResponseEntity.ok(profileDetailsModel.toString());
     }
 }
