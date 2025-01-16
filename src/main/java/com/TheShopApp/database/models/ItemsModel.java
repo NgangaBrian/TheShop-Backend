@@ -1,6 +1,8 @@
 package com.TheShopApp.database.models;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "products")
@@ -9,10 +11,26 @@ public class ItemsModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long products_id;
+    @Setter
+    @Getter
+    @Column(name = "product_name")
     private String product_name;
+
+    @Getter
+    @Setter
+    @Column(name = "product_description")
     private String product_description;
+
+    @Getter
+    @Setter
     private String image_url;
+
+    @Getter
+    @Setter
     private Double product_price;
+
+    @Setter
+    @Getter
     private int subcategory_id;
 
     public ItemsModel() {
@@ -25,7 +43,8 @@ public class ItemsModel {
                 ", product_price=" + product_price + ", subcategory_id=" + subcategory_id + "]";
     }
 
-    public ItemsModel(Long products_id, String product_name, String product_description, String image_url, Double product_price, int subcategory_id) {
+    public ItemsModel(Long products_id, String product_name, String product_description, String image_url,
+                      Double product_price, int subcategory_id) {
         this.products_id = products_id;
         this.product_name = product_name;
         this.product_description = product_description;
@@ -42,43 +61,4 @@ public class ItemsModel {
         this.products_id = products_id;
     }
 
-    public String getProduct_name() {
-        return product_name;
-    }
-
-    public void setProduct_name(String product_name) {
-        this.product_name = product_name;
-    }
-
-    public String getProduct_description() {
-        return product_description;
-    }
-
-    public void setProduct_description(String product_description) {
-        this.product_description = product_description;
-    }
-
-    public String getImage_url() {
-        return image_url;
-    }
-
-    public void setImage_url(String image_url) {
-        this.image_url = image_url;
-    }
-
-    public Double getProduct_price() {
-        return product_price;
-    }
-
-    public void setProduct_price(Double product_price) {
-        this.product_price = product_price;
-    }
-
-    public int getSubcategory_id() {
-        return subcategory_id;
-    }
-
-    public void setSubcategory_id(int subcategory_id) {
-        this.subcategory_id = subcategory_id;
-    }
 }

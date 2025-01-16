@@ -1,6 +1,9 @@
 package com.TheShopApp.database.restControllers;
 
+import com.TheShopApp.darajaApi.dtos.AcknowledgeResponse;
 import com.TheShopApp.database.models.*;
+import com.TheShopApp.database.repository.ProfileDetailsRepository;
+import com.TheShopApp.database.repository.UserRepository;
 import com.TheShopApp.database.services.*;
 import com.TheShopApp.database.utils.GoogleTokenVerifier;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -24,20 +28,25 @@ public class MySQLController {
 
 
     private final BannerSliderService bannerSliderService;
-    private CategoriesService categoriesService;
-    private ItemsService itemsService;
-    private UserService userService;
-    private OrderService orderService;
-    private ProfileDetailsService profileDetailsService;
+    private final CategoriesService categoriesService;
+    private final ItemsService itemsService;
+    private final UserService userService;
+    private final OrderService orderService;
+    private final ProfileDetailsRepository profileDetailsRepository;
+    private final UserRepository userRepository;
+    private final ItemSearchService itemSearchService;
 
-
-    public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService, BannerSliderService bannerSliderService, OrderService orderService) {
+    public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService,
+                           BannerSliderService bannerSliderService, OrderService orderService, ProfileDetailsRepository profileDetailsRepository,
+                           UserRepository userRepository, ItemSearchService itemSearchService) {
         this.userService = userService;
         this.itemsService = itemsService;
         this.categoriesService = categoriesService;
         this.bannerSliderService = bannerSliderService;
         this.orderService = orderService;
-        this.profileDetailsService = new ProfileDetailsService();
+        this.profileDetailsRepository = profileDetailsRepository;
+        this.userRepository = userRepository;
+        this.itemSearchService = itemSearchService;
     }
 
 
@@ -169,9 +178,99 @@ public class MySQLController {
         return orderService.getOrderByCustomerId(customerId);
     }
 
-    @PostMapping("/updateprofiledetails")
-    public ResponseEntity<String> updateProfileDetails (@RequestBody ProfileDetailsModel profileDetails) {
-        ProfileDetailsModel profileDetailsModel = profileDetailsService.saveProfileDetails(profileDetails);
-        return ResponseEntity.ok(profileDetailsModel.toString());
+    @PostMapping("/updateuserdetails")
+    public ResponseEntity<AcknowledgeResponse> addProfileDetails(@RequestBody ProfileDetailsModel profileDetailsModel) {
+        try {
+
+            Optional<ProfileDetailsModel> existingProfile = profileDetailsRepository.findById(profileDetailsModel.getUser_id());
+
+            if (existingProfile.isPresent()) {
+                // Update existing record
+                ProfileDetailsModel profileDetails = existingProfile.get();
+                profileDetails.setMobile_number(profileDetailsModel.getMobile_number());
+                profileDetails.setAddress(profileDetailsModel.getAddress());
+                profileDetails.setPostal_code(profileDetailsModel.getPostal_code());
+                profileDetails.setProfile_url(profileDetailsModel.getProfile_url());
+
+                profileDetailsRepository.save(profileDetails);
+
+                AcknowledgeResponse response = new AcknowledgeResponse();
+                response.setMessage("updated");
+                return ResponseEntity.ok(response);
+            } else {
+
+                ProfileDetailsModel newProfileDetails = new ProfileDetailsModel();
+                newProfileDetails.setUser_id(profileDetailsModel.getUser_id());
+                newProfileDetails.setMobile_number(profileDetailsModel.getMobile_number());
+                newProfileDetails.setAddress(profileDetailsModel.getAddress());
+                newProfileDetails.setPostal_code(profileDetailsModel.getPostal_code());
+                newProfileDetails.setProfile_url(profileDetailsModel.getProfile_url());
+
+                profileDetailsRepository.save(newProfileDetails);
+
+                AcknowledgeResponse response = new AcknowledgeResponse();
+                response.setMessage("success");
+                return ResponseEntity.ok(response);
+            }} catch (Exception e) {
+            e.printStackTrace();
+            AcknowledgeResponse response = new AcknowledgeResponse();
+            response.setMessage("failed");
+
+            return ResponseEntity.status(500).body(response);
+        }
     }
+
+    @GetMapping("/getuserdetails/{customerId}")
+    public ResponseEntity<ProfileDetailsModel> getProfileDetails(@PathVariable Integer customerId) {
+        try {
+            Optional<ProfileDetailsModel> userDetails = profileDetailsRepository.findById(customerId);
+            if (userDetails.isPresent()) {
+                return ResponseEntity.ok(userDetails.get());
+            } else {
+                return ResponseEntity.status(404).body(null);
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/user/changepassword")
+    public ResponseEntity<AcknowledgeResponse> changePassword(@RequestBody ChangePasswordModel changePassModel){
+        AcknowledgeResponse response = new AcknowledgeResponse();
+        try {
+            Optional<User> userOptional = userRepository.findById(changePassModel.getId());
+            if (userOptional.isEmpty()) {
+                response.setMessage("User not found");
+                return ResponseEntity.status(404).body(response);
+            }
+            User user = userOptional.get();
+
+            log.info("Retrieved user details: {}", user.getEmail() + " " + user.getPassword() + " " + user.getFullname());
+
+            if (!BCrypt.checkpw(changePassModel.getOldPassword(), user.getPassword())) {
+                response.setMessage("Your entered the wrong password");
+                return ResponseEntity.ok(response);
+            }
+            user.setPassword(BCrypt.hashpw(changePassModel.getNewPassword(), BCrypt.gensalt()));
+            userRepository.save(user);
+
+            response.setMessage("Password Changed Successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setMessage("Error changing password");
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> search(@RequestParam String search) {
+        List<SearchItemsModel> products = itemSearchService.searchProduct(search);
+        if (products.isEmpty()) {
+            return ResponseEntity.status(404).body("Product not found");
+        }
+        return ResponseEntity.ok(products);
+    }
+
 }

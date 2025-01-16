@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends CrudRepository <User, Long> {
@@ -49,4 +50,6 @@ public interface UserRepository extends CrudRepository <User, Long> {
                            @Param("email") String email,
                            @Param("googleId") String googleId,
                            @Param("authType") String authType);
+
+    Optional<User> findById(Integer id);
 }
