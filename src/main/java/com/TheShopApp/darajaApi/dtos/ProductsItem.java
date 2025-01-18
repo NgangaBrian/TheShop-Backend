@@ -35,4 +35,13 @@ public class ProductsItem{
 		this.itemsModel.setProduct_id(productId);
 	}
 
+	@Override
+	public String toString() {
+		return "ProductsItem{" +
+				"id=" + id +
+				", productId=" + (itemsModel != null ? itemsModel.getProduct_id() : null) + // Avoid infinite recursion by showing just productId
+				", quantity=" + quantity +
+				'}';
+	}
+
 }
