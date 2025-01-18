@@ -3,6 +3,9 @@ package com.TheShopApp.darajaApi.services;
 import com.TheShopApp.darajaApi.config.MpesaConfiguration;
 import com.TheShopApp.darajaApi.dtos.*;
 import com.TheShopApp.darajaApi.utils.HelperUtility;
+import com.TheShopApp.database.models.OrderDTO;
+import com.TheShopApp.database.repository.OrderRepository;
+import com.TheShopApp.database.services.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -12,7 +15,9 @@ import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.TheShopApp.darajaApi.utils.Constants.*;
 
@@ -23,11 +28,14 @@ public class DarajaApiImpl implements DarajaApi {
     private final MpesaConfiguration mpesaConfiguration;
     private final OkHttpClient okHttpClient;
     private final ObjectMapper objectMapper;
+    private final OrderRepository orderRepository;
 
-    public DarajaApiImpl(MpesaConfiguration mpesaConfiguration, OkHttpClient okHttpClient, ObjectMapper objectMapper) {
+
+    public DarajaApiImpl(MpesaConfiguration mpesaConfiguration, OkHttpClient okHttpClient, ObjectMapper objectMapper, OrderRepository orderRepository) {
         this.mpesaConfiguration = mpesaConfiguration;
         this.okHttpClient = okHttpClient;
         this.objectMapper = objectMapper;
+        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -118,7 +126,7 @@ public class DarajaApiImpl implements DarajaApi {
         externalSTKPushRequest.setPartyA(internalSTKPushRequest.getPhoneNumber());
         externalSTKPushRequest.setPartyB(mpesaConfiguration.getStkPushShortCode());
         externalSTKPushRequest.setPhoneNumber(internalSTKPushRequest.getPhoneNumber());
-        externalSTKPushRequest.setCallBackURL("https://0b97-105-231-222-157.ngrok-free.app/mobile-money/stk-transaction-result");
+        externalSTKPushRequest.setCallBackURL(mpesaConfiguration.getStkPushRequestCallbackUrl());
         externalSTKPushRequest.setAccountReference(HelperUtility.getTransactionUniqueNumber());
         externalSTKPushRequest.setTransactionDesc(internalSTKPushRequest.getPhoneNumber() + " Transaction");
 
@@ -136,7 +144,27 @@ public class DarajaApiImpl implements DarajaApi {
             Response response = okHttpClient.newCall(request).execute();
             assert response.body() != null;
             String responseBody = response.body().string();
+            log.info("The response body is: ");
             log.info(responseBody);
+
+            STKPushSynchronousResponse stkPushSynchronousResponse = objectMapper.readValue(responseBody, STKPushSynchronousResponse.class);
+
+            String merchantRequestId = stkPushSynchronousResponse.getMerchantRequestID();
+
+            Optional<OrdersModel> optionalOrder = orderRepository.findById(internalSTKPushRequest.getOrderId());
+
+            if (optionalOrder.isPresent()) {
+                OrdersModel ordersModel = optionalOrder.get();
+                ordersModel.setMerchant_request_id(merchantRequestId);
+
+                log.info(ordersModel.toString());
+
+                orderRepository.save(ordersModel);
+            } else {
+                log.error("Order with ID {} not found", internalSTKPushRequest.getOrderId());
+            }
+
+
             return objectMapper.readValue(responseBody, STKPushSynchronousResponse.class);
         } catch (IOException e){
             log.error("Could not perform STK Push request -> %s");

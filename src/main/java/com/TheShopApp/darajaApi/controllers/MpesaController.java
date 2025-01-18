@@ -81,7 +81,7 @@ public class MpesaController {
     // todo :- /validation (Transaction Validation Endpoint...)
 
     @PostMapping(value = "/validation", produces = "application/json")
-    public ResponseEntity<AcknowledgeResponse> validateTransaction(@RequestBody TransactionResult transactionResul){
+    public ResponseEntity<AcknowledgeResponse> validateTransaction(@RequestBody TransactionResult transactionResult){
         return ResponseEntity.ok(acknowledgeResponse);
     }
 
@@ -168,7 +168,7 @@ Internal Request
 
         log.info("==========STK Push Async Response============");
         String rawCallbackResponse = objectMapper.writeValueAsString(stkPushAsynchronousResponse);
-        log.info("Mpesa raw callback response"+rawCallbackResponse);
+        log.info("Mpesa raw callback response" + rawCallbackResponse);
 
         logResponseToFile(rawCallbackResponse);
 
@@ -196,10 +196,10 @@ Internal Request
                 case "Amount":
                     amount = new BigDecimal(item.getValue());
                     break;
-                case "TransactionTime":
+                case "TransactionDate":
                     transTime = LocalDateTime.parse(item.getValue(), DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
                     break;
-                case "TransactionID":
+                case "MpesaReceiptNumber":
                     transId = item.getValue();
                     break;
                 case "FirstName":
@@ -223,24 +223,24 @@ Internal Request
 
             // Further processing like updating the database or notifying the user that transaction is successful
             Payments payments = new Payments();
-            payments.setUser_id(userId);
-            payments.setAmount(amount);
-            payments.setMarchant_request_id(merchantRequestID);
-            payments.setCheckout_request_id(checkoutRequestID);
-            payments.setFirst_name(firstName);
-            payments.setMiddle_name(middleName);
-            payments.setLast_name(lastName);
-            payments.setResult_code(resultCode);
-            payments.setResult_desc(resultDesc);
-            payments.setPhone_number(phoneNumer);
-            payments.setTrans_id(transId);
-            payments.setTrans_time(transTime);
+
+//            payments.setAmount(amount);
+//            payments.setMarchant_request_id(merchantRequestID);
+//            payments.setCheckout_request_id(checkoutRequestID);
+//            payments.setFirst_name(firstName);
+//            payments.setMiddle_name(middleName);
+//            payments.setLast_name(lastName);
+//            payments.setResult_code(resultCode);
+//            payments.setResult_desc(resultDesc);
+//            payments.setPhone_number(phoneNumer);
+//            payments.setTrans_id(transId);
+//            payments.setTrans_time(transTime);
 
             Payments savedPayment = paymentRepository.save(payments);
             Long paymentId = savedPayment.getId();
 
             OrdersModel newOrder = new OrdersModel();
-            newOrder.setPayment_id(paymentId);
+
             newOrder.setCustomer(user);
             newOrder.setOrder_date(new Date());
 

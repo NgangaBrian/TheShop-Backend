@@ -1,6 +1,7 @@
 package com.TheShopApp.database.services;
 
 import com.TheShopApp.darajaApi.dtos.OrdersModel;
+import com.TheShopApp.darajaApi.dtos.ProductsItem;
 import com.TheShopApp.database.models.OrderDTO;
 import com.TheShopApp.database.models.OrderedProductDTO;
 import com.TheShopApp.database.models.Payments;
@@ -23,6 +24,7 @@ public class OrderService {
         this.paymentRepository = paymentRepository;
     }
 
+
     public List<OrderDTO> getOrderByCustomerId(Long customerId) {
         List<OrdersModel> orders = orderRepository.findByCustomer_id(customerId);
 
@@ -30,10 +32,9 @@ public class OrderService {
             OrderDTO orderDTO = new OrderDTO();
             orderDTO.setOrderId(ordersModel.getId());
             orderDTO.setOrderDate(ordersModel.getOrder_date().toString());
-            orderDTO.setPaymentId(ordersModel.getPayment_id());
+            orderDTO.setMerchant_request_id(ordersModel.getMerchant_request_id());
 
-            Payments payments = paymentRepository.findById(ordersModel.getPayment_id())
-                            .orElseThrow(() -> new RuntimeException("Payment not found"));
+            Payments payments = paymentRepository.findByMerchantRequestId(ordersModel.getMerchant_request_id());
 
             orderDTO.setAmountPaid(payments.getAmount());
 
@@ -47,5 +48,18 @@ public class OrderService {
             }).collect(Collectors.toList()));
             return orderDTO;
         }).collect(Collectors.toList());
+    }
+
+    public Long saveOrder(OrdersModel ordersModel) {
+        if (ordersModel.getProducts() != null){
+            for (ProductsItem productsItem : ordersModel.getProducts()) {
+                productsItem.setOrders(ordersModel);
+            }
+        }
+
+        OrdersModel savedOrder = orderRepository.save(ordersModel);
+
+        return savedOrder.getId();
+
     }
 }

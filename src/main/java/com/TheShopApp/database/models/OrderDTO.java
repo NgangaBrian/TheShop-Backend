@@ -9,7 +9,7 @@ import java.util.List;
 public class OrderDTO {
     private Long orderId;
     private String orderDate;
-    private Long paymentId;
+    private String merchant_request_id;
     private BigDecimal amountPaid;
     private List<OrderedProductDTO> orderedProducts;
 }

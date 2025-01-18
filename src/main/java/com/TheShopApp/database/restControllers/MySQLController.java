@@ -1,7 +1,8 @@
 package com.TheShopApp.database.restControllers;
 
-import com.TheShopApp.darajaApi.dtos.AcknowledgeResponse;
+import com.TheShopApp.darajaApi.dtos.*;
 import com.TheShopApp.database.models.*;
+import com.TheShopApp.database.repository.PaymentRepository;
 import com.TheShopApp.database.repository.ProfileDetailsRepository;
 import com.TheShopApp.database.repository.UserRepository;
 import com.TheShopApp.database.services.*;
@@ -16,6 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,10 +39,11 @@ public class MySQLController {
     private final ProfileDetailsRepository profileDetailsRepository;
     private final UserRepository userRepository;
     private final ItemSearchService itemSearchService;
+    private final PaymentRepository paymentRepository;
 
     public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService,
                            BannerSliderService bannerSliderService, OrderService orderService, ProfileDetailsRepository profileDetailsRepository,
-                           UserRepository userRepository, ItemSearchService itemSearchService) {
+                           UserRepository userRepository, ItemSearchService itemSearchService, PaymentRepository paymentRepository) {
         this.userService = userService;
         this.itemsService = itemsService;
         this.categoriesService = categoriesService;
@@ -47,6 +52,7 @@ public class MySQLController {
         this.profileDetailsRepository = profileDetailsRepository;
         this.userRepository = userRepository;
         this.itemSearchService = itemSearchService;
+        this.paymentRepository = paymentRepository;
     }
 
 
@@ -273,4 +279,67 @@ public class MySQLController {
         return ResponseEntity.ok(products);
     }
 
+    @PostMapping("/saveOrders")
+    public ResponseEntity<?> saveOrderDetails(@RequestBody OrdersModel ordersModel) {
+        Long orderId = orderService.saveOrder(ordersModel);
+
+        AcknowledgeResponse response = new AcknowledgeResponse();
+        response.setMessage(String.valueOf(orderId));
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/savePaymentDetails")
+    public ResponseEntity<AcknowledgeResponse> savePaymentDetails(@RequestBody STKPushAsynchronousResponse stkPushAsynchronousResponse) {
+
+        StkCallback stkCallback = stkPushAsynchronousResponse.getBody().getStkCallback();
+        String merchantRequestID = stkCallback.getMerchantRequestID();
+        String checkoutRequestID = stkCallback.getCheckoutRequestID();
+        int resultCode = stkCallback.getResultCode();
+        String resultDesc = stkCallback.getResultDesc();
+
+        CallbackMetadata callbackMetadata = stkCallback.getCallbackMetadata();
+
+        // Initialize variables to store details
+        String phoneNumer = null;
+        BigDecimal amount = null;
+        LocalDateTime transDate = null;
+        String mpesa_receipt_number = null;
+
+        for (ItemItem item : callbackMetadata.getItem()) {
+            switch (item.getName()) {
+                case "PhoneNumber":
+                    phoneNumer = item.getValue();
+                    break;
+                case "Amount":
+                    amount = new BigDecimal(item.getValue());
+                    break;
+                case "TransactionDate":
+                    transDate = LocalDateTime.parse(item.getValue(), DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+                    break;
+                case "MpesaReceiptNumber":
+                    mpesa_receipt_number = item.getValue();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        Payments payments = new Payments();
+
+        payments.setMpesa_receipt_number(mpesa_receipt_number);
+        payments.setTrans_date(transDate);
+        payments.setPhone_number(phoneNumer);
+        payments.setAmount(amount);
+        payments.setCheckout_request_id(checkoutRequestID);
+        payments.setMerchantRequestId(merchantRequestID);
+        payments.setResult_code(resultCode);
+        payments.setResult_desc(resultDesc);
+
+        paymentRepository.save(payments);
+
+        AcknowledgeResponse response = new AcknowledgeResponse();
+        response.setMessage("Success");
+
+        return ResponseEntity.ok(response);
+    }
 }

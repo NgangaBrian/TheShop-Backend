@@ -11,4 +11,7 @@ public class InternalSTKPushRequest{
 
 	@JsonProperty("PhoneNumber")
 	private String phoneNumber;
+
+	@JsonProperty("orderId")
+	private Long orderId;
 }
