@@ -7,6 +7,7 @@ import com.TheShopApp.database.repository.ProfileDetailsRepository;
 import com.TheShopApp.database.repository.UserRepository;
 import com.TheShopApp.database.services.*;
 import com.TheShopApp.database.utils.GoogleTokenVerifier;
+import com.TheShopApp.database.utils.GenerateVerificationCode;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,10 +41,12 @@ public class MySQLController {
     private final UserRepository userRepository;
     private final ItemSearchService itemSearchService;
     private final PaymentRepository paymentRepository;
+    private final EmailService emailService;
+    private final VerificationCodeService verificationCodeService;
 
     public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService,
                            BannerSliderService bannerSliderService, OrderService orderService, ProfileDetailsRepository profileDetailsRepository,
-                           UserRepository userRepository, ItemSearchService itemSearchService, PaymentRepository paymentRepository) {
+                           UserRepository userRepository, ItemSearchService itemSearchService, PaymentRepository paymentRepository, EmailService emailService, VerificationCodeService verificationCodeService) {
         this.userService = userService;
         this.itemsService = itemsService;
         this.categoriesService = categoriesService;
@@ -53,6 +56,8 @@ public class MySQLController {
         this.userRepository = userRepository;
         this.itemSearchService = itemSearchService;
         this.paymentRepository = paymentRepository;
+        this.emailService = emailService;
+        this.verificationCodeService = verificationCodeService;
     }
 
 
@@ -342,4 +347,72 @@ public class MySQLController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/checkUserExists")
+    public ResponseEntity<?> checkUserExists(@RequestParam String email) {
+        boolean userExists = userService.checkUserExists(email);
+        if (userExists) {
+            String verificationCode = new GenerateVerificationCode().generateVerificationCode();
+            log.info("Verification code is {}", verificationCode);
+
+            verificationCodeService.saveVerificationCode(email, verificationCode);
+
+            String emailBody = "<h1>Verification Code</h1>" +
+                    "<p>Hello,</p>" +
+                    "<p>Your Verification Code is: <strong>" + verificationCode + "</strong></p>" +
+                    "<p>Please use this code to complete changing your password.</p>" +
+                    "<p>If you did not request this, please ignore this email.</p>" +
+                    "<p>Best regards,<br>TheShop Team</p>";
+
+            boolean sendEmail = emailService.sendEmail(email, "Verification Code", emailBody);
+            if (sendEmail) {
+                return ResponseEntity.status(200).body("Verification Code Sent");
+            } else {
+                return ResponseEntity.status(404).body("Verification Code Not Sent, Please try again");
+            }
+        }
+        else {
+            return ResponseEntity.status(404).body("Email does not exist. Please register");
+        }
+    }
+
+    @GetMapping("/verifyCode")
+    public ResponseEntity<?> verifyCode(@RequestParam String email, @RequestParam String code) {
+        VerificationCodeModel verificationCode = verificationCodeService.getVerificationCodeByEmail(email);
+        if (verificationCode == null) {
+            return ResponseEntity.status(404).body("Verification Code Not Found");
+        }
+        if (verificationCode.getExpiry_time().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(404).body("Verification Code Expired");
+        }
+        if (!verificationCode.equals(code)) {
+            return ResponseEntity.status(404).body("Verification Code is Invalid");
+        }
+        return ResponseEntity.status(200).body("Email Verification Successful");
+    }
+
+    @PostMapping("/changeForgotPass")
+    public ResponseEntity<?> changeForgotPass(@RequestBody ChangeForgotPassModel changeForgotPassModel) {
+        AcknowledgeResponse response = new AcknowledgeResponse();
+        try {
+            User user = userRepository.findUserByEmail(changeForgotPassModel.getEmail());
+            if (user == null) {
+                response.setMessage("User not found");
+                return ResponseEntity.status(404).body(response);
+            }
+
+            log.info("Retrieved user details: {}", user.getEmail() + " " + user.getPassword() + " " + user.getFullname());
+
+            user.setPassword(BCrypt.hashpw(changeForgotPassModel.getPassword(), BCrypt.gensalt()));
+            userRepository.save(user);
+
+            response.setMessage("Password Changed Successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setMessage("Error changing password");
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
 }
