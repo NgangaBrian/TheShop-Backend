@@ -5,6 +5,7 @@ import com.TheShopApp.database.models.*;
 import com.TheShopApp.database.repository.PaymentRepository;
 import com.TheShopApp.database.repository.ProfileDetailsRepository;
 import com.TheShopApp.database.repository.UserRepository;
+import com.TheShopApp.database.repository.VerificationCodeRepository;
 import com.TheShopApp.database.services.*;
 import com.TheShopApp.database.utils.GoogleTokenVerifier;
 import com.TheShopApp.database.utils.GenerateVerificationCode;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,10 +45,11 @@ public class MySQLController {
     private final PaymentRepository paymentRepository;
     private final EmailService emailService;
     private final VerificationCodeService verificationCodeService;
+    private final VerificationCodeRepository verificationCodeRepository;
 
     public MySQLController(UserService userService, ItemsService itemsService, CategoriesService categoriesService,
                            BannerSliderService bannerSliderService, OrderService orderService, ProfileDetailsRepository profileDetailsRepository,
-                           UserRepository userRepository, ItemSearchService itemSearchService, PaymentRepository paymentRepository, EmailService emailService, VerificationCodeService verificationCodeService) {
+                           UserRepository userRepository, ItemSearchService itemSearchService, PaymentRepository paymentRepository, EmailService emailService, VerificationCodeService verificationCodeService, VerificationCodeRepository verificationCodeRepository) {
         this.userService = userService;
         this.itemsService = itemsService;
         this.categoriesService = categoriesService;
@@ -58,6 +61,7 @@ public class MySQLController {
         this.paymentRepository = paymentRepository;
         this.emailService = emailService;
         this.verificationCodeService = verificationCodeService;
+        this.verificationCodeRepository = verificationCodeRepository;
     }
 
 
@@ -355,7 +359,15 @@ public class MySQLController {
             String verificationCode = new GenerateVerificationCode().generateVerificationCode();
             log.info("Verification code is {}", verificationCode);
 
-            verificationCodeService.saveVerificationCode(email, verificationCode);
+            VerificationCodeModel verificationCodeModel = verificationCodeRepository.findByEmail(email);
+
+            if(verificationCodeModel != null) {
+                verificationCodeModel.setCode(verificationCode);
+                verificationCodeModel.setExpiry_time(LocalDateTime.now().plus(15, ChronoUnit.MINUTES));
+                verificationCodeRepository.save(verificationCodeModel);
+            } else {
+                verificationCodeService.saveVerificationCode(email, verificationCode);
+            }
 
             String emailBody = "<h1>Verification Code</h1>" +
                     "<p>Hello,</p>" +
@@ -385,7 +397,7 @@ public class MySQLController {
         if (verificationCode.getExpiry_time().isBefore(LocalDateTime.now())) {
             return ResponseEntity.status(404).body("Verification Code Expired");
         }
-        if (!verificationCode.equals(code)) {
+        if (!verificationCode.getCode().equals(code)) {
             return ResponseEntity.status(404).body("Verification Code is Invalid");
         }
         return ResponseEntity.status(200).body("Email Verification Successful");

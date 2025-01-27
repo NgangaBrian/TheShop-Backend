@@ -16,7 +16,11 @@ public class VerificationCodeModel {
     private String email;
     private String code;
     private LocalDateTime expiry_time;
+
+    @Column(name = "created_at", insertable = false)
     private LocalDateTime created_at;
+
+    @Column(name = "updated_at", insertable = false)
     private LocalDateTime updated_at;
 
 }
