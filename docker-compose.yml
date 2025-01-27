@@ -1,28 +1,11 @@
 version: '3.8'
 
 services:
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-container
-    environment:
-      MYSQL_ROOT_PASSWORD: Brian123   # Set MySQL root password
-      MYSQL_DATABASE: theshop       # MySQL user password
-    ports:
-      - "3307:3306"                       # Expose MySQL port
-    networks:
-      - theshop-network
 
   # Spring Boot Application
   app:
     image: theshop-app                    # This is the image you built from your Dockerfile
     container_name: theshop-app-container
-    depends_on:
-      - mysql                             # Ensure MySQL is ready before starting the app
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/theshop  # MySQL connection URL in Docker
-      SPRING_DATASOURCE_USERNAME: root     # Database username
-      SPRING_DATASOURCE_PASSWORD: Brian123  # Database password
     ports:
       - "8080:8080"                       # Expose Spring Boot app on port 8080
     networks:
