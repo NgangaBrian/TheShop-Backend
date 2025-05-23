@@ -1,0 +1,58 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  ACR_NAME: youracrname               # Replace with your actual ACR name (no ".azurecr.io")
+  IMAGE_NAME: theshop-app
+  TAG: $(Build.BuildId)
+  CONTAINER_APP_NAME: theshop-backend-app   # Replace with your Container App name
+  RESOURCE_GROUP: your-resource-group        # Replace with your Azure resource group
+
+steps:
+- checkout: self
+
+- task: Docker@2
+  displayName: 'Build Docker Image'
+  inputs:
+    containerRegistry: 'DockerRegistryServiceConnection'
+    repository: $(IMAGE_NAME)
+    command: 'build'
+    Dockerfile: '**/Dockerfile'
+    tags: |
+      $(TAG)
+
+- task: Docker@2
+  displayName: 'Push Docker Image'
+  inputs:
+    containerRegistry: 'DockerRegistryServiceConnection'
+    repository: $(IMAGE_NAME)
+    command: 'push'
+    tags: |
+      $(TAG)
+
+- task: AzureCLI@2
+  displayName: 'Deploy to Azure Container Apps'
+  inputs:
+    azureSubscription: 'AzureServiceConnection'   # Use the name of your service connection
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az config set extension.use_dynamic_install=yes_without_prompt
+      az containerapp update \
+        --name $(CONTAINER_APP_NAME) \
+        --resource-group $(RESOURCE_GROUP) \
+        --image $(ACR_NAME).azurecr.io/$(IMAGE_NAME):$(TAG) \
+        --set-env-vars ENV=production
+
+- script: |
+    echo Add other tasks to build, test, and deploy your project.
+    echo See https://aka.ms/yaml
+  displayName: 'Run a multi-line script'
