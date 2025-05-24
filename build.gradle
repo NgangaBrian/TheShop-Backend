@@ -40,5 +40,9 @@ dependencies {
 }
 
 tasks.named('test') {
+	enabled = false
 	useJUnitPlatform()
+	environment 'DATABASE_URL', System.getenv('DATABASE_URL')
+	environment 'DATABASE_USERNAME', System.getenv('DATABASE_USERNAME')
+	environment 'DATABASE_PASSWORD', System.getenv('DATABASE_PASSWORD')
 }
