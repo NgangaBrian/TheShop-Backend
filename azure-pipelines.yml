@@ -10,11 +10,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  ACR_NAME: youracrname               # Replace with your actual ACR name (no ".azurecr.io")
+  ACR_NAME: theshopreistry               # Replace with your actual ACR name (no ".azurecr.io")
   IMAGE_NAME: theshop-app
   TAG: $(Build.BuildId)
-  CONTAINER_APP_NAME: theshop-backend-app   # Replace with your Container App name
-  RESOURCE_GROUP: your-resource-group        # Replace with your Azure resource group
+  CONTAINER_APP_NAME: theshop-app-container   # Replace with your Container App name
+  RESOURCE_GROUP: TheShop        # Replace with your Azure resource group
 
 steps:
 - checkout: self
@@ -49,10 +49,5 @@ steps:
       az containerapp update \
         --name $(CONTAINER_APP_NAME) \
         --resource-group $(RESOURCE_GROUP) \
-        --image $(ACR_NAME).azurecr.io/$(IMAGE_NAME):$(TAG) \
-        --set-env-vars ENV=production
+        --image $(ACR_NAME).azurecr.io/$(IMAGE_NAME):$(TAG)
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
