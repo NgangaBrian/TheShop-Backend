@@ -178,6 +178,11 @@ public class MySQLController {
         return categoriesService.getAllCategories();
     }
 
+    @GetMapping("/test")
+    public String testPipeline(){
+        return "Pipeline Working. Yay!";
+    }
+
     @GetMapping("/items")
     public ResponseEntity<Page<ItemsModel>> getAllItems(
             @RequestParam(defaultValue = "0") int page,
