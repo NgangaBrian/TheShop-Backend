@@ -19,6 +19,9 @@ variables:
 steps:
 - checkout: self
 
+- script: ./gradlew build
+  displayName: 'Build Spring Boot App'
+  workingDirectory: '$(System.DefaultWorkingDirectory)'
 - task: Docker@2
   displayName: 'Build Docker Image'
   inputs:
